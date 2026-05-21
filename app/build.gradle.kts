@@ -1,7 +1,27 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.ksp)
+}
+
+val localProperties = Properties().apply {
+    val file = rootProject.file("local.properties")
+    if (file.exists()) {
+        file.inputStream().use { load(it) }
+    }
+}
+
+fun propertyOrEnv(name: String, defaultValue: String = ""): String {
+    return providers.gradleProperty(name).orNull
+        ?: providers.environmentVariable(name).orNull
+        ?: localProperties.getProperty(name)
+        ?: defaultValue
+}
+
+fun String.toBuildConfigString(): String {
+    return "\"" + replace("\\", "\\\\").replace("\"", "\\\"") + "\""
 }
 
 android {
@@ -21,7 +41,11 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-        buildConfigField("String", "CLAUDE_API_KEY", "\"${project.findProperty("CLAUDE_API_KEY") ?: ""}\"")
+        val geminiApiKey = propertyOrEnv("GEMINI_API_KEY").trim()
+        val geminiModel = propertyOrEnv("GEMINI_MODEL", "gemini-2.5-flash").trim().ifBlank { "gemini-2.5-flash" }
+
+        buildConfigField("String", "GEMINI_API_KEY", geminiApiKey.toBuildConfigString())
+        buildConfigField("String", "GEMINI_MODEL", geminiModel.toBuildConfigString())
     }
 
     buildTypes {

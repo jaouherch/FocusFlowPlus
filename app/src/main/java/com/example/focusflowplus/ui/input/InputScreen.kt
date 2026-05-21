@@ -2,214 +2,266 @@ package com.example.focusflowplus.ui.input
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
+import androidx.compose.material3.Button
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.example.focusflowplus.domain.model.AiRecommendation
-import com.example.focusflowplus.ui.theme.*
+import com.example.focusflowplus.ui.components.ErrorBanner
+import com.example.focusflowplus.ui.components.FocusCard
+import com.example.focusflowplus.ui.components.PrimaryActionButton
+import com.example.focusflowplus.ui.components.ScreenHero
+import com.example.focusflowplus.ui.components.SectionTitle
+import com.example.focusflowplus.ui.components.StatusPill
 
 @Composable
 fun InputScreen(
     viewModel: InputViewModel,
-    onStartSession: (AiRecommendation) -> Unit
+    onStartSession: (Long) -> Unit,
+    onViewHistory: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val scrollState = rememberScrollState()
 
-    Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
+    ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .statusBarsPadding()
+                .navigationBarsPadding()
+                .imePadding()
                 .verticalScroll(scrollState)
-                .padding(24.dp),
-            verticalArrangement = Arrangement.spacedBy(24.dp)
+                .padding(horizontal = 20.dp, vertical = 18.dp),
+            verticalArrangement = Arrangement.spacedBy(18.dp)
         ) {
-            Spacer(modifier = Modifier.height(16.dp))
+            ScreenHero(
+                title = "FocusFlow+",
+                subtitle = "AI-guided focus sessions based on your energy and available time.",
+                emoji = "🌿",
+                trailing = {
+                    OutlinedButton(
+                        onClick = onViewHistory,
+                        enabled = !uiState.isLoading,
+                        shape = RoundedCornerShape(16.dp)
+                    ) {
+                        Text("History")
+                    }
+                }
+            )
 
-            // Header
-            Column {
+            FocusCard {
+                SectionTitle(
+                    title = "What are you working on?",
+                    subtitle = "Write one clear task. Gemini will turn it into a realistic session plan."
+                )
+                OutlinedTextField(
+                    value = uiState.taskDescription,
+                    onValueChange = viewModel::onTaskDescriptionChange,
+                    placeholder = {
+                        Text("Example: Review Kotlin Compose notes and prepare 5 revision questions")
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = 118.dp),
+                    maxLines = 5,
+                    shape = RoundedCornerShape(18.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                        unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                        focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
+                        unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.25f)
+                    )
+                )
                 Text(
-                    text = "FocusFlow+",
-                    style = MaterialTheme.typography.headlineLarge,
+                    text = "${uiState.taskDescription.length}/500 characters",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.fillMaxWidth(),
+                    textAlign = TextAlign.End
+                )
+            }
+
+            FocusCard {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    SectionTitle(title = "How's your energy?")
+                    StatusPill(text = energyLabel(uiState.energyLevel))
+                }
+                Text(
+                    text = energyEmoji(uiState.energyLevel),
+                    style = MaterialTheme.typography.displayMedium,
+                    modifier = Modifier.fillMaxWidth(),
+                    textAlign = TextAlign.Center
+                )
+                Slider(
+                    value = uiState.energyLevel.toFloat(),
+                    onValueChange = { viewModel.onEnergyLevelChange(it.toInt()) },
+                    valueRange = 1f..5f,
+                    steps = 3,
+                    colors = SliderDefaults.colors(
+                        thumbColor = MaterialTheme.colorScheme.primary,
+                        activeTrackColor = MaterialTheme.colorScheme.primary,
+                        inactiveTrackColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f)
+                    )
+                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text("Low", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("Balanced", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("High", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+
+            FocusCard {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    SectionTitle(title = "Available time")
+                    StatusPill(text = "${uiState.availableMinutes} min")
+                }
+                Text(
+                    text = readableDuration(uiState.availableMinutes),
+                    style = MaterialTheme.typography.headlineMedium,
                     color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.fillMaxWidth(),
+                    textAlign = TextAlign.Center,
                     fontWeight = FontWeight.Bold
                 )
-                Text(
-                    text = "Let's plan your session",
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                Slider(
+                    value = uiState.availableMinutes.toFloat(),
+                    onValueChange = { viewModel.onAvailableMinutesChange(it.toInt()) },
+                    valueRange = 15f..180f,
+                    steps = 10,
+                    colors = SliderDefaults.colors(
+                        thumbColor = MaterialTheme.colorScheme.primary,
+                        activeTrackColor = MaterialTheme.colorScheme.primary,
+                        inactiveTrackColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f)
+                    )
+                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    TimePresetButton("25m", uiState.availableMinutes == 25, Modifier.weight(1f)) { viewModel.onAvailableMinutesChange(25) }
+                    TimePresetButton("45m", uiState.availableMinutes == 45, Modifier.weight(1f)) { viewModel.onAvailableMinutesChange(45) }
+                    TimePresetButton("60m", uiState.availableMinutes == 60, Modifier.weight(1f)) { viewModel.onAvailableMinutesChange(60) }
+                    TimePresetButton("90m", uiState.availableMinutes == 90, Modifier.weight(1f)) { viewModel.onAvailableMinutesChange(90) }
+                }
+            }
+
+            AnimatedVisibility(visible = uiState.error != null) {
+                ErrorBanner(message = uiState.error.orEmpty())
+            }
+
+            PrimaryActionButton(
+                text = "Generate Plan & Start ✨",
+                loadingText = "Asking Gemini...",
+                loading = uiState.isLoading,
+                enabled = !uiState.isLoading,
+                onClick = {
+                    viewModel.createSession { sessionId ->
+                        onStartSession(sessionId)
+                    }
+                }
+            )
+
+            FocusCard {
+                SectionTitle(
+                    title = "How it works",
+                    subtitle = "1. Describe your task  2. Set energy and time  3. Gemini creates a plan  4. Complete the timer and save your session."
                 )
             }
 
-            // Task Input Card
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-            ) {
-                Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Text(
-                        text = "What are you working on?",
-                        style = MaterialTheme.typography.titleLarge,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    OutlinedTextField(
-                        value = uiState.taskDescription,
-                        onValueChange = viewModel::onTaskDescriptionChange,
-                        placeholder = {
-                            Text(
-                                "e.g. Study for math exam, Write project report, Practice guitar...",
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        },
-                        modifier = Modifier.fillMaxWidth().heightIn(min = 100.dp),
-                        maxLines = 4,
-                        shape = RoundedCornerShape(12.dp),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = MaterialTheme.colorScheme.primary,
-                            unfocusedBorderColor = MaterialTheme.colorScheme.outline
-                        )
-                    )
-                }
-            }
-
-            // Energy Level Card
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-            ) {
-                Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                    Text(
-                        text = "How's your energy?",
-                        style = MaterialTheme.typography.titleLarge,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    val energyEmoji = when (uiState.energyLevel) {
-                        1 -> "😴 Exhausted"
-                        2 -> "😔 Tired"
-                        3 -> "😐 Okay"
-                        4 -> "😊 Good"
-                        5 -> "⚡ Energized"
-                        else -> "😐 Okay"
-                    }
-                    Text(
-                        text = energyEmoji,
-                        style = MaterialTheme.typography.headlineMedium,
-                        modifier = Modifier.fillMaxWidth(),
-                        textAlign = TextAlign.Center
-                    )
-                    Slider(
-                        value = uiState.energyLevel.toFloat(),
-                        onValueChange = { viewModel.onEnergyLevelChange(it.toInt()) },
-                        valueRange = 1f..5f,
-                        steps = 3,
-                        colors = SliderDefaults.colors(
-                            thumbColor = MaterialTheme.colorScheme.primary,
-                            activeTrackColor = MaterialTheme.colorScheme.primary,
-                            inactiveTrackColor = MaterialTheme.colorScheme.outline
-                        )
-                    )
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text("Low", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text("High", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                }
-            }
-
-            // Available Time Card
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-            ) {
-                Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                    Text(
-                        text = "Available time",
-                        style = MaterialTheme.typography.titleLarge,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    Text(
-                        text = "${uiState.availableMinutes} minutes",
-                        style = MaterialTheme.typography.headlineMedium,
-                        color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.fillMaxWidth(),
-                        textAlign = TextAlign.Center,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                    Slider(
-                        value = uiState.availableMinutes.toFloat(),
-                        onValueChange = { viewModel.onAvailableMinutesChange(it.toInt()) },
-                        valueRange = 15f..180f,
-                        steps = 10,
-                        colors = SliderDefaults.colors(
-                            thumbColor = MaterialTheme.colorScheme.primary,
-                            activeTrackColor = MaterialTheme.colorScheme.primary,
-                            inactiveTrackColor = MaterialTheme.colorScheme.outline
-                        )
-                    )
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text("15 min", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text("3 hours", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                }
-            }
-
-            // Error message
-            AnimatedVisibility(visible = uiState.error != null) {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
-                ) {
-                    Text(
-                        text = uiState.error ?: "",
-                        modifier = Modifier.padding(16.dp),
-                        color = MaterialTheme.colorScheme.error,
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                }
-            }
-
-            // Start Button
-            Button(
-                onClick = {
-                    viewModel.getRecommendation { recommendation ->
-                        onStartSession(recommendation)
-                    }
-                },
-                modifier = Modifier.fillMaxWidth().height(56.dp),
-                enabled = !uiState.isLoading,
-                shape = RoundedCornerShape(16.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
-            ) {
-                if (uiState.isLoading) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(24.dp),
-                        color = MaterialTheme.colorScheme.onPrimary,
-                        strokeWidth = 2.dp
-                    )
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Text("Getting your plan...", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onPrimary)
-                } else {
-                    Text("Start My Session ✨", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onPrimary)
-                }
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(8.dp))
         }
+    }
+}
+
+@Composable
+private fun TimePresetButton(
+    text: String,
+    selected: Boolean,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit
+) {
+    if (selected) {
+        Button(
+            onClick = onClick,
+            modifier = modifier.height(42.dp),
+            shape = RoundedCornerShape(14.dp)
+        ) {
+            Text(text)
+        }
+    } else {
+        OutlinedButton(
+            onClick = onClick,
+            modifier = modifier.height(42.dp),
+            shape = RoundedCornerShape(14.dp)
+        ) {
+            Text(text)
+        }
+    }
+}
+
+private fun energyEmoji(level: Int): String = when (level) {
+    1 -> "😴"
+    2 -> "😔"
+    3 -> "😐"
+    4 -> "😊"
+    5 -> "⚡"
+    else -> "😐"
+}
+
+private fun energyLabel(level: Int): String = when (level) {
+    1 -> "Exhausted"
+    2 -> "Tired"
+    3 -> "Okay"
+    4 -> "Good"
+    5 -> "Energized"
+    else -> "Okay"
+}
+
+private fun readableDuration(minutes: Int): String {
+    return if (minutes < 60) {
+        "$minutes minutes"
+    } else {
+        val hours = minutes / 60
+        val remaining = minutes % 60
+        if (remaining == 0) "$hours hour${if (hours > 1) "s" else ""}" else "$hours h $remaining min"
     }
 }

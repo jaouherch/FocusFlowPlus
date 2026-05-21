@@ -15,6 +15,8 @@ private val WellnessColorScheme = lightColorScheme(
     secondaryContainer = SandLight,
     onSecondaryContainer = SandDark,
 
+    tertiary = MutedBlue,
+
     background = CreamWhite,
     onBackground = TextPrimary,
 
@@ -24,7 +26,10 @@ private val WellnessColorScheme = lightColorScheme(
     onSurfaceVariant = TextSecondary,
 
     outline = SoftGray,
-    error = SoftRed
+
+    error = SoftRed,
+    errorContainer = SoftRedContainer,
+    onErrorContainer = SoftRed
 )
 
 @Composable
